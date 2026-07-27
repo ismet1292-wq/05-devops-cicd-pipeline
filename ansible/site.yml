@@ -1,0 +1,9 @@
+---
+- name: Validate local server configuration
+  hosts: local
+  gather_facts: false
+
+  tasks:
+    - name: Display validation message
+      ansible.builtin.debug:
+        msg: "Ansible configuration validation completed successfully"
