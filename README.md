@@ -13,11 +13,13 @@ Compose on a disposable runner, verifies it, and removes the demonstration.
 5. Deploy again and require an unchanged Ansible recap.
 6. Inspect actual container health, image tag, non-root UID, read-only filesystem,
    loopback publication, and the production environment response.
-7. Collect logs on failure and run Compose cleanup even when a check fails.
+7. Attempt an intentionally broken candidate and require deployment to fail.
+8. Restore the original image ID and verify Docker health and HTTP recovery.
+9. Collect logs on failure and run Compose cleanup even when a check fails.
 
 This is continuous integration with a real disposable deployment test. It does
-not publish an image, deploy to AWS, retain a public application, demonstrate
-rollback, or automatically promote releases to production. The image tag traces
+not publish an image, deploy to AWS, retain a public application, or
+automatically promote releases to production. The image tag traces
 the commit; the Node base image tag is mutable and builds are not byte-for-byte
 reproducible. No cloud credentials or registry write permissions are required.
 
@@ -71,6 +73,22 @@ deployment validation therefore runs only on the disposable runner.
 
 The app is a demonstration API with no database, authentication, TLS, remote
 production deployment, load testing, or security audit.
+
+## Failed release and rollback demonstration
+
+After the normal deployment checks, scripts/verify-rollback.py builds a local
+candidate derived from the tested image whose command exits with code 1. It
+requires Compose's deployment check to fail and inspects the failed container
+to confirm the intended candidate caused that failure. A finally block restores
+the known-good image even if the experiment fails. Verification compares the
+restored runtime image ID with the original image ID and checks both Docker
+health and the actual HTTP health payload. CI then removes the container and
+network using its normal cleanup step.
+
+This is an explicit recovery experiment with downtime. It does not implement
+zero-downtime promotion, a general production rollback controller, or database
+migration recovery. Abrupt runner termination can prevent the finally block
+from running; the runner is disposable and no persistent host is provisioned.
 
 ## Earlier CI screenshots
 

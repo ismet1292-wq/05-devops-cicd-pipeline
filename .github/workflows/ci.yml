@@ -42,6 +42,8 @@ jobs:
         run: docker build -t "$PROJECT_IMAGE" .
       - name: Deploy, verify container and redeploy unchanged
         run: python scripts/verify-deployment.py
+      - name: Reject a failed candidate and verify rollback
+        run: python scripts/verify-rollback.py
       - name: Collect container diagnostics
         if: failure()
         run: docker compose --project-name project05-demo logs --no-color
