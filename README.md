@@ -71,3 +71,12 @@ deployment validation therefore runs only on the disposable runner.
 
 The app is a demonstration API with no database, authentication, TLS, remote
 production deployment, load testing, or security audit.
+
+## Earlier CI screenshots
+
+These screenshots were added before the disposable deployment test. They record
+previous workflow runs; use the current Actions run for the expanded checks.
+
+![Earlier workflow runs](workflow-runs.png)
+![Earlier successful pipeline](pipeline-success.png)
+![Earlier pipeline details](ci-pipeline.png)
