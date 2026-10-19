@@ -1,9 +1,32 @@
 ---
-- name: Validate local server configuration
+- name: Deploy the demonstration container on the disposable runner
   hosts: local
   gather_facts: false
 
   tasks:
-    - name: Display validation message
-      ansible.builtin.debug:
-        msg: "Ansible configuration validation completed successfully"
+    - name: Start the Compose application and wait for health
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-name
+          - project05-demo
+          - --file
+          - "{{ playbook_dir }}/../docker-compose.yml"
+          - up
+          - --detach
+          - --wait
+          - --wait-timeout
+          - "60"
+      register: deployment
+      changed_when: >-
+        'Created' in deployment.stderr or 'Started' in deployment.stderr or
+        'Recreated' in deployment.stderr
+
+    - name: Verify the deployed HTTP health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:13000/health
+        status_code: 200
+      register: health
+      failed_when: health.status != 200 or health.json.status != 'healthy'
+      when: not ansible_check_mode

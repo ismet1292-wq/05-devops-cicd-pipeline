@@ -1,64 +1,50 @@
 name: DevOps CI Pipeline
-
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
-
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  test-node-app:
-    name: Test Node.js Application
-    runs-on: ubuntu-latest
-
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: '22'
           cache: npm
           cache-dependency-path: app/package-lock.json
-
-      - name: Install dependencies
+      - run: npm ci
         working-directory: app
-        run: npm ci
-
-      - name: Test application
+      - run: npm test
         working-directory: app
-        run: npm test
-
-  build-docker-image:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    needs: test-node-app
-
+  deploy-test:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PROJECT_IMAGE: project05-demo:${{ github.sha }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t devops-cicd-app:${{ github.sha }} .
-
-  validate-ansible:
-    name: Validate Ansible Playbook
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Ansible
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible
-
-      - name: Check Ansible playbook syntax
-        run: ansible-playbook --syntax-check -i ansible/inventory.ini ansible/site.yml
-
-      - name: Run Ansible playbook
-        run: ansible-playbook -i ansible/inventory.ini ansible/site.yml
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install ansible-core==2.20.1
+      - name: Check Ansible syntax
+        run: ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check
+      - name: Validate Compose configuration
+        run: docker compose --project-name project05-demo config --quiet
+      - name: Build commit-tagged image
+        run: docker build -t "$PROJECT_IMAGE" .
+      - name: Deploy, verify container and redeploy unchanged
+        run: python scripts/verify-deployment.py
+      - name: Collect container diagnostics
+        if: failure()
+        run: docker compose --project-name project05-demo logs --no-color
+      - name: Remove demonstration containers
+        if: always()
+        run: docker compose --project-name project05-demo down --remove-orphans

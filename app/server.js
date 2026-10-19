@@ -1,7 +1,8 @@
 const express = require("express");
 
+function createApp() {
 const app = express();
-const port = process.env.PORT || 3000;
+app.disable("x-powered-by");
 
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -16,6 +17,11 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Application is running on port ${port}`);
-});
+return app;
+}
+if (require.main === module) {
+  const server = createApp().listen(process.env.PORT || 3000, "0.0.0.0");
+  process.on("SIGTERM", () => server.close());
+  process.on("SIGINT", () => server.close());
+}
+module.exports = {createApp};
